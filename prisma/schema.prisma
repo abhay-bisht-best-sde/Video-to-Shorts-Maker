@@ -1,0 +1,34 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProcessingStatus {
+  NotStarted
+  Generating
+  Generated
+  Error
+}
+
+model Video {
+  id                    String           @id @default(uuid())
+  videoUuid             String           @unique
+  originalName          String
+  mimeType              String
+  size                  Int
+  duration              Float?
+  videoKey              String
+  transcriptUuid        String?
+  transcriptPath        String?
+  vttUuid               String?
+  vttPath               String?
+  transcriptStatus      ProcessingStatus @default(NotStarted)
+  videoAnalysisStatus   ProcessingStatus @default(NotStarted)
+  clipsGenerationStatus ProcessingStatus @default(NotStarted)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  @@map("videos")
+}
