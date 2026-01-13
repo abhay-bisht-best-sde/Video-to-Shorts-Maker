@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
-import { prisma } from "@/app/(core)/helpers/prisma";
-import { publishToTranscriptQueue } from "@/app/(core)/helpers/queues/publishers/transcript-publisher";
-import { logger } from "@/app/(core)/helpers/logger";
-import { uploadFileToBucket } from "@/app/(core)/helpers/utils/storage";
 
-const MAX_DURATION_SECONDS = 35 * 60;
-export const runtime = "nodejs";
-const ALLOWED_MIME_TYPE = "video/mp4";
-const VIDEO_BUCKET_NAME = "videos";
+import { ALLOWED_MIME_TYPE, MAX_DURATION_SECONDS, VIDEO_BUCKET_NAME } from "@/app/config/constants";
+import { logger } from "@/app/helpers/logger";
+import { prisma } from "@/app/lib/prisma";
+import { publishToTranscriptQueue } from "@/app/lib/aws/queues/publishers/transcript-publisher";
+import { randomUUID } from "crypto";
+import { uploadFileToBucket } from "@/app/lib/r2/storage";
 
 export async function POST(request: NextRequest) {
   const traceId = logger.generateTraceId();
@@ -27,10 +24,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    log.debug("Validating file", { fileName: file.name, fileType: file.type, fileSize: file.size });
+    const {name : fileName , type : fileType, size : fileSize} = file;
 
-    if (file.type !== ALLOWED_MIME_TYPE) {
-      log.warn("Invalid file type provided", { fileType: file.type, allowedType: ALLOWED_MIME_TYPE });
+    log.debug("Validating file", { fileName, fileType, fileSize });
+
+    if (fileType !== ALLOWED_MIME_TYPE) {
+      log.warn("Invalid file type provided", { fileType: fileType, allowedType: ALLOWED_MIME_TYPE });
       return NextResponse.json(
         { error: `Invalid file type. Only ${ALLOWED_MIME_TYPE} is allowed.` },
         { status: 400 }
@@ -39,8 +38,8 @@ export async function POST(request: NextRequest) {
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
     const durationParam = formData.get("duration");
+    
     let duration: number | null = null;
 
     if (durationParam) {
@@ -67,50 +66,48 @@ export async function POST(request: NextRequest) {
 
     log.debug("Video duration", { duration });
 
-    const videoUuid = randomUUID();
-    log.debug("Generated video UUID", { videoUuid });
+    const fileExtension = fileName.split(".").pop() || "mp4";
 
-    const fileExtension = file.name.split(".").pop() || "mp4";
-    const uploadResult = await uploadFileToBucket({
-      file: buffer,
+    const {uuid, key} = await uploadFileToBucket({
+      fileBuffer: buffer,
       bucketName: VIDEO_BUCKET_NAME,
       fileType: fileExtension,
-      mimeType: file.type,
+      mimeType: fileType,
       traceId,
     });
 
     log.info("Video uploaded to R2 bucket", {
-      videoUuid: uploadResult.uuid,
-      key: uploadResult.key,
+      videoUuid: uuid,
+      key,
     });
 
-    const video = await prisma.video.create({
+    const {id, videoUuid} = await prisma.video.create({
       data: {
-        videoUuid: uploadResult.uuid,
-        originalName: file.name,
-        mimeType: file.type,
-        size: file.size,
+        videoUuid: uuid,
+        originalName: fileName,
+        mimeType: fileType,
+        size: fileSize,
         duration,
-        videoKey: uploadResult.key,
+        videoKey: key,
       },
     });
 
-    log.info("Video saved to database", { videoId: video.id, videoUuid: video.videoUuid });
+    log.info("Video saved to database", { videoId: id, videoUuid: videoUuid });
 
     try {
-      await publishToTranscriptQueue(video.id, video.videoUuid, traceId);
-      log.info("Published video to transcript queue", { videoId: video.id });
+      await publishToTranscriptQueue(id, videoUuid, traceId);
+      log.info("Published video to transcript queue", { videoId: id });
     } catch (error) {
       log.error("Error publishing to transcript queue", error as Error, {
-        videoId: video.id,
-        videoUuid: video.videoUuid,
+        videoId: id,
+        videoUuid,
       });
     }
 
-    log.info("Video upload completed successfully", { videoId: video.id, videoUuid: video.videoUuid });
+    log.info("Video upload completed successfully", { videoId: id, videoUuid: videoUuid });
 
     return NextResponse.json(
-      { message: "Video uploaded successfully", video },
+      { message: "Video uploaded successfully" },
       { status: 201 }
     );
   } catch (error) {

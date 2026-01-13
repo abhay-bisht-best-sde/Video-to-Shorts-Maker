@@ -1,36 +1,33 @@
 "use client";
 
 import { useMemo } from "react";
-import { Button } from "@/app/(core)/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/(core)/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/(core)/ui/card";
+import { Button } from "@/app/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/ui/card";
 import { Upload, Video } from "lucide-react";
 import Link from "next/link";
-import { useVideos } from "@/app/(core)/hooks/use-videos";
-import { useVideoUpload } from "@/app/(core)/hooks/use-video-upload";
-import { QueryBoundary } from "@/app/(core)/components/query-boundary";
-import { formatFileSize, formatDuration, formatDate } from "@/app/(core)/helpers/utils/format";
-import { getStatusBadge } from "@/app/(core)/helpers/utils/status";
+import { useVideos } from "@/app/hooks/apis/queries/use-videos";
+import { useVideoUpload } from "@/app/hooks/use-video-upload";
+import { QueryBoundary } from "@/app/ui/query-boundary";
+import { formatFileSize, formatDuration, formatDate } from "@/app/helpers/utils/format";
+import { getStatusBadge } from "@/app/ui/status";
+import { ProcessingStatus } from "@prisma/client";
 
 export default function VideosPage() {
   const videosQuery = useVideos();
   const { fileInputRef, isUploading, handleFileSelect } = useVideoUpload();
-
   const emptyConfig = useMemo(() => ({
     title: "No videos uploaded yet",
     description: "Upload your first video to get started",
     icon: <Video className="size-6" />,
   }), []);
-
   const loadingConfig = useMemo(() => ({
     message: "Loading videos...",
   }), []);
-
   const errorConfig = useMemo(() => ({
     title: "Failed to load videos",
     description: "There was an error loading your videos. Please try again.",
   }), []);
-
   return (
     <div className="container mx-auto py-8 px-4">
       <Card>
@@ -56,10 +53,8 @@ export default function VideosPage() {
               isLoading={isUploading}
               className="flex items-center gap-2"
             >
-              <>
               <Upload className="size-4" />
               Upload Video
-              </>
             </Button>
             <p className="text-sm text-muted-foreground">
               Max duration: 30 minutes | Format: MP4 only
@@ -94,16 +89,22 @@ export default function VideosPage() {
                         </TableCell>
                         <TableCell>{formatFileSize(video.size)}</TableCell>
                         <TableCell>{formatDuration(video.duration)}</TableCell>
-                        <TableCell>{getStatusBadge(video.transcriptStatus)}</TableCell>
-                        <TableCell>{getStatusBadge(video.videoAnalysisStatus)}</TableCell>
-                        <TableCell>{getStatusBadge(video.clipsGenerationStatus)}</TableCell>
+                        <TableCell>{getStatusBadge({ status: video.transcriptStatus })}</TableCell>
+                        <TableCell>{getStatusBadge({ status: video.videoAnalysisStatus })}</TableCell>
+                        <TableCell>{getStatusBadge({ status: video.clipsGenerationStatus })}</TableCell>
                         <TableCell>{formatDate(video.createdAt)}</TableCell>
                         <TableCell>
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/video/${video.videoUuid}`}>
-                              View
-                            </Link>
-                          </Button>
+                          {video.transcriptStatus === ProcessingStatus.Generated &&
+                          video.videoAnalysisStatus === ProcessingStatus.Generated &&
+                          video.clipsGenerationStatus === ProcessingStatus.Generated ? (
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/video/${video.videoUuid}`}>
+                                View
+                              </Link>
+                            </Button>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Processing...</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

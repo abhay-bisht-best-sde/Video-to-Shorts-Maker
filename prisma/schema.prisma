@@ -13,6 +13,12 @@ enum ProcessingStatus {
   Error
 }
 
+enum ClipStatus {
+  Success
+  Error
+  NotStarted
+}
+
 model Video {
   id                    String           @id @default(uuid()) @db.Uuid
   videoUuid             String      @db.Uuid @unique
@@ -38,13 +44,32 @@ model Video {
 model VideoMoment {
   id String @id @default(uuid()) @db.Uuid
   videoId String @db.Uuid
-  video Video @relation(fields: [videoId], references: [id])
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
   videoUuid String @db.Uuid
   start_time Float
   end_time Float
   title String
+  clips ClipMetadata[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@map("video_moments")
   @@index([videoId, videoUuid])
+}
+
+enum ClipOrientation {
+  Horizontal
+  Vertical
+}
+
+model ClipMetadata {
+  id String @id @default(uuid()) @db.Uuid
+  videoMomentId String @db.Uuid
+  videoMoment VideoMoment @relation(fields: [videoMomentId], references: [id], onDelete: Cascade)
+  orientation ClipOrientation
+  filePath String?
+  status ClipStatus @default(NotStarted)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("clip_metadata")
+  @@index([videoMomentId])
 }

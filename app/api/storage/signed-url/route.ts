@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { env } from "@/app/(core)/config/env";
-import { logger } from "@/app/(core)/helpers/logger";
-import { r2Client } from "@/app/(core)/helpers/r2/client";
-
-const EXPIRY_HOURS = 2;
+import { env } from "@/app/config/env";
+import { logger } from "@/app/helpers/logger";
+import { r2Client } from "@/app/lib/r2/client";
+import { SIGNED_URL_EXPIRY_HOURS } from "@/app/config/constants";
 
 export async function GET(request: NextRequest) {
   const traceId = logger.generateTraceId();
   const log = logger.withTraceId(traceId);
+  
   log.info("Received request for signed URL");
 
   try {
@@ -34,13 +34,13 @@ export async function GET(request: NextRequest) {
     });
 
     const signedUrl = await getSignedUrl(r2Client, command, {
-      expiresIn: EXPIRY_HOURS * 3600,
+      expiresIn: SIGNED_URL_EXPIRY_HOURS * 3600,
     });
 
     log.info("Signed URL generated successfully", { key });
 
     return NextResponse.json(
-      { url: signedUrl, expiresIn: EXPIRY_HOURS * 3600 },
+      { url: signedUrl, expiresIn: SIGNED_URL_EXPIRY_HOURS * 3600 },
       { status: 200 }
     );
   } catch (error) {

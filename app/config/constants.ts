@@ -1,0 +1,9 @@
+export const MAX_DURATION_SECONDS = 35 * 60;
+export const ALLOWED_MIME_TYPE = "video/mp4";
+export const VIDEO_BUCKET_NAME = "videos";
+export const MOMENTS_BUCKET_NAME = "moments";
+export const runtime = "nodejs";
+export const SIGNED_URL_EXPIRY_HOURS = 2;
+export const SUPABASE_SIGNED_URL_EXPIRY_SECONDS = 3600;
+export const SQS_MESSAGE_BATCH_SIZE = 4;
+export const VIDEO_TRIM_TIMEOUT_SECONDS = 300000
