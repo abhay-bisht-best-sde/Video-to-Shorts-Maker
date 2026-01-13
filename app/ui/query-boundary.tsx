@@ -1,9 +1,10 @@
 "use client";
-
 import { ReactNode, useMemo, useCallback } from "react";
 import { UseQueryResult } from "@tanstack/react-query";
+import { motion } from "framer-motion";
 import { Button } from "@/app/ui/button";
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from "@/app/ui/empty";
+import { Loading } from "@/app/ui/loading";
+import { AnimatedEmpty } from "@/app/ui/animated-empty";
 import { Spinner } from "@/app/ui/spinner";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
@@ -25,7 +26,7 @@ interface IErrorConfig {
 }
 
 interface IQueryBoundaryProps<TData, TError> {
-  query: UseQueryResult<TData, TError>;
+  query: UseQueryResult<TData, TError> | [UseQueryResult<TData, TError>, ...Array<UseQueryResult<unknown, TError>>];
   children: (data: TData) => ReactNode;
   showRefetching?: boolean;
   empty?: IEmptyConfig;
@@ -33,10 +34,25 @@ interface IQueryBoundaryProps<TData, TError> {
   error?: IErrorConfig;
 }
 
-export function QueryBoundary<TData, TError>(props: IQueryBoundaryProps<TData, TError>) {
-  const { query, children, showRefetching = true, empty, loading, error } = props;
+export function QueryBoundary<TData, TError>(props: IQueryBoundaryProps<TData, TError>): ReactNode {
+  const { query, children, showRefetching = true, loading, error } = props;
 
-  const { data, isLoading, isError, error: queryError, isRefetching, refetch } = query;
+  // Normalize to array
+  const queries = useMemo(() => (Array.isArray(query) ? query : [query]), [query]);
+  const primaryQuery = Array.isArray(query) ? query[0] : query;
+
+  // Aggregate states from all queries
+  // For loading: check if primary is loading, or if any enabled query is loading without data
+  const isLoading = primaryQuery.isLoading && !primaryQuery.data;
+  const isError = queries.some((q) => q.isError);
+  const isRefetching = queries.some((q) => q.isRefetching);
+  
+  const { data } = primaryQuery;
+  const queryError = queries.find((q) => q.error)?.error;
+  const refetch = useCallback(() => {
+    queries.forEach((q) => q.refetch());
+  }, [queries]);
+
   const handleRetry = useCallback(() => {
     if (error?.onRetry) {
       error.onRetry();
@@ -51,75 +67,46 @@ export function QueryBoundary<TData, TError>(props: IQueryBoundaryProps<TData, T
     return "An error occurred while loading data";
   }, [error?.description, queryError]);
 
-  const isEmpty = useMemo(() => {
-    return data === null || data === undefined || (Array.isArray(data) && data.length === 0);
-  }, [data]);
-  
   if (isLoading && !data) {
     return (
-      <div className={loading?.fullScreen ? "flex min-h-screen items-center justify-center" : "flex items-center justify-center py-12"}>
-        <div className="flex flex-col items-center gap-4">
-          <Spinner className="size-8" />
-          <p className="text-sm text-muted-foreground">
-            {loading?.message || "Loading..."}
-          </p>
-        </div>
-      </div>
+      <Loading 
+        message={loading?.message || "Loading..."}
+        fullScreen={loading?.fullScreen}
+      />
     );
   }
   if (isError) {
     return (
-      <Empty>
-        <EmptyMedia variant="icon">
-          <AlertCircle className="size-6 text-destructive" />
-        </EmptyMedia>
-        <EmptyHeader>
-          <EmptyTitle>
-            {error?.title || "Something went wrong"}
-          </EmptyTitle>
-          <EmptyDescription>
-            {errorMessage}
-          </EmptyDescription>
-        </EmptyHeader>
-        <Button
-          variant="outline"
-          onClick={handleRetry}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className="size-4" />
-          Try Again
-        </Button>
-      </Empty>
+      <AnimatedEmpty
+        title={error?.title || "Something went wrong"}
+        description={errorMessage}
+        icon={<AlertCircle className="size-6 text-destructive" />}
+        action={
+          <Button
+            variant="outline"
+            onClick={handleRetry}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="size-4" />
+            Try Again
+          </Button>
+        }
+      />
     );
   }
-  if (isEmpty) {
-    return (
-      <Empty>
-        {empty?.icon && (
-          <EmptyMedia variant="icon">
-            {empty.icon}
-          </EmptyMedia>
-        )}
-        <EmptyHeader>
-          <EmptyTitle>
-            {empty?.title || "No data found"}
-          </EmptyTitle>
-          {empty?.description && (
-            <EmptyDescription>
-              {empty.description}
-            </EmptyDescription>
-          )}
-        </EmptyHeader>
-      </Empty>
-    );
-  }
+
   if (isRefetching && showRefetching && data) {
     return (
       <div className="relative">
-        <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-md bg-background/80 px-3 py-2 text-sm text-muted-foreground backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-md bg-background/80 px-3 py-2 text-sm text-muted-foreground backdrop-blur-sm border shadow-sm"
+        >
           <Spinner className="size-4" />
           <span>Refreshing...</span>
-        </div>
+        </motion.div>
         {data && children(data)}
       </div>
     );

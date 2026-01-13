@@ -2,7 +2,7 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { r2Client } from "@/app/lib/r2/client";
 import { env } from "@/app/config/env";
 import { logger } from "@/app/helpers/logger";
-import { mkdir, unlink } from "fs/promises";
+import { mkdir, unlink, writeFile, readFile } from "fs/promises";
 import { join, resolve } from "path";
 import { Worker } from "worker_threads";
 
@@ -15,9 +15,9 @@ interface IExtractAudioParams {
 
 function getWorkerPath(): string {
   if (process.env.NODE_ENV === "production") {
-    return resolve(process.cwd(), ".next/server/app/(core)/lib/utils/audio-extraction-worker.js");
+    return resolve(process.cwd(), ".next/server/app/helpers/utils/audio-extraction-worker.js");
   }
-  return resolve(process.cwd(), "app/(core)/lib/utils/audio-extraction-worker.ts");
+  return resolve(process.cwd(), "app/helpers/utils/audio-extraction-worker.ts");
 }
 
 export async function extractAudioFromVideo({
@@ -46,9 +46,12 @@ export async function extractAudioFromVideo({
   const tempDir = join(process.cwd(), "tmp");
   await mkdir(tempDir, { recursive: true });
   
-
   const tempVideoPath = join(tempDir, `${tempVideoUuid}.mp4`);
   const tempAudioPath = join(tempDir, `${transcriptUuid}.mp3`);
+
+  // Write video buffer to file instead of passing as array to avoid "Invalid array length" error
+  log.debug("Writing video buffer to temp file", { tempVideoPath, bufferSize: videoBuffer.length });
+  await writeFile(tempVideoPath, videoBuffer);
 
   return new Promise<Buffer>((resolvePromise, reject) => {
     const workerPath = getWorkerPath();
@@ -57,7 +60,6 @@ export async function extractAudioFromVideo({
 
     const worker = new Worker(workerPath, {
       workerData: {
-        videoBuffer: Array.from(videoBuffer),
         tempVideoPath,
         tempAudioPath,
       },
@@ -79,26 +81,41 @@ export async function extractAudioFromVideo({
 
     worker.on("message", async (result: { 
       success: boolean; 
-      audioBuffer?: number[]; 
+      tempAudioPath?: string; 
       error?: string;
     }) => {
       clearTimeout(timeout);
       
-      // Cleanup temp files using the UUIDs
-      try {
-        await unlink(tempVideoPath).catch(() => {});
-        await unlink(tempAudioPath).catch(() => {});
-      } catch {
-        log.debug("Error cleaning up temp files", { tempVideoUuid, transcriptUuid });
-      }
-      
-      if (result.success && result.audioBuffer) {
-        const buffer = Buffer.from(result.audioBuffer);
-        log.info("Audio extracted successfully", { 
-          audioSize: buffer.length 
-        });
-        resolvePromise(buffer);
+      if (result.success && result.tempAudioPath) {
+        try {
+          // Read the audio file that was created by the worker
+          const audioBuffer = await readFile(result.tempAudioPath);
+          
+          // Cleanup temp files
+          await unlink(tempVideoPath).catch(() => {});
+          await unlink(result.tempAudioPath).catch(() => {});
+          
+          log.info("Audio extracted successfully", { 
+            audioSize: audioBuffer.length 
+          });
+          resolvePromise(audioBuffer);
+        } catch (error) {
+          // Cleanup on error
+          await unlink(tempVideoPath).catch(() => {});
+          await unlink(result.tempAudioPath).catch(() => {});
+          const err = error instanceof Error ? error : new Error("Failed to read audio file");
+          log.error("Error reading audio file", err);
+          reject(err);
+        }
       } else {
+        // Cleanup temp files on failure
+        try {
+          await unlink(tempVideoPath).catch(() => {});
+          await unlink(tempAudioPath).catch(() => {});
+        } catch {
+          log.debug("Error cleaning up temp files", { tempVideoUuid, transcriptUuid });
+        }
+        
         const error = new Error(result.error || "Unknown error in worker thread");
         log.error("Worker thread error", error);
         reject(error);

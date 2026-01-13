@@ -3,13 +3,22 @@ import { prisma } from "@/app/lib/prisma";
 import { logger } from "@/app/helpers/logger";
 
 export async function GET(
+  request: Request,
   { params }: { params: Promise<{ videoUuid: string }> }
 ) {
   const traceId = logger.generateTraceId();
   const log = logger.withTraceId(traceId);
 
   try {
-    const { videoUuid } = await params;
+    const resolvedParams = await params;
+    if (!resolvedParams || !resolvedParams.videoUuid) {
+      log.error("Invalid params", new Error("videoUuid is missing from params"), { params: resolvedParams });
+      return NextResponse.json(
+        { error: "Invalid request: videoUuid is required" },
+        { status: 400 }
+      );
+    }
+    const { videoUuid } = resolvedParams;
 
     log.info("Received request to fetch video with moments", { videoUuid });
 

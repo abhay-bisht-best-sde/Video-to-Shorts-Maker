@@ -6,11 +6,11 @@ import {
 import { sqsClient } from "../sqs-client";
 import { env } from "@/app/config/env";
 import { getPollingConfig } from "../polling-config";
-import { processLLMAnalysis } from "@/app/actions/llm-analysis-actions";
 import { logger } from "@/app/helpers/logger";
 import { publishToVideoTrimmingQueue } from "../publishers";
 import { SQS_MESSAGE_BATCH_SIZE } from "@/app/config/constants";
 import { chunkArray } from "@/app/helpers/utils/array";
+import { processLLMAnalysis } from "@/app/actions";
 
 export interface LLMAnalysisQueueMessage {
   videoId: string;

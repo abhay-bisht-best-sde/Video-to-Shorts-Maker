@@ -25,7 +25,9 @@ export function useVideos() {
       }
       const hasProcessingVideos = videos.some(
         (video) =>
-        [video.transcriptStatus, video.videoAnalysisStatus, video.clipsGenerationStatus].includes(ProcessingStatus.Generating)
+          video.transcriptStatus !== ProcessingStatus.Generated ||
+          video.videoAnalysisStatus !== ProcessingStatus.Generated ||
+          video.clipsGenerationStatus !== ProcessingStatus.Generated
       );
       return hasProcessingVideos ? 5000 : false;
     },

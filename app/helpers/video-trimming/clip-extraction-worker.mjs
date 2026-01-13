@@ -6,6 +6,7 @@ async function processClipExtraction() {
   if (!parentPort) {
     throw new Error("parentPort is not available");
   }
+  
   const { tempVideoPath, tempClipPath, startTime, duration, aspectRatio } = workerData;
   
   try {
@@ -83,4 +84,11 @@ async function processClipExtraction() {
   }
 }
 
-processClipExtraction();
+processClipExtraction().catch((error) => {
+  if (parentPort) {
+    parentPort.postMessage({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error in processClipExtraction",
+    });
+  }
+});

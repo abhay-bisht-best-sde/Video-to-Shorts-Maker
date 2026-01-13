@@ -55,10 +55,15 @@ export async function extractClip(params: IClipExtractionParams): Promise<IExtra
       },
     });
 
+    let isResolved = false;
+
     const timeout = setTimeout(() => {
-      log.error("Worker thread timeout", new Error("Clip extraction timeout"), { tempClipPath });
-      worker.terminate();
-      reject(new Error("Clip extraction timeout"));
+      if (!isResolved) {
+        isResolved = true;
+        log.error("Worker thread timeout", new Error("Clip extraction timeout"), { tempClipPath });
+        worker.terminate();
+        reject(new Error("Clip extraction timeout"));
+      }
     }, VIDEO_TRIM_TIMEOUT_SECONDS);
 
     worker.on("message", (result: {
@@ -66,7 +71,10 @@ export async function extractClip(params: IClipExtractionParams): Promise<IExtra
       tempClipPath?: string;
       error?: string;
     }) => {
+      if (isResolved) return;
+      isResolved = true;
       clearTimeout(timeout);
+      
       if (result.success && result.tempClipPath) {
         log.debug("Clip extracted successfully", {
           clipPath: result.tempClipPath,
@@ -85,6 +93,8 @@ export async function extractClip(params: IClipExtractionParams): Promise<IExtra
     });
 
     worker.on("error", (error) => {
+      if (isResolved) return;
+      isResolved = true;
       clearTimeout(timeout);
       log.error("Worker thread error", error, { tempClipPath });
       worker.terminate();
@@ -92,8 +102,10 @@ export async function extractClip(params: IClipExtractionParams): Promise<IExtra
     });
 
     worker.on("exit", (code) => {
+      if (isResolved) return;
       clearTimeout(timeout);
       if (code !== 0) {
+        isResolved = true;
         log.error("Worker thread exited with code", new Error(`Worker exited with code ${code}`), { tempClipPath });
         reject(new Error(`Worker stopped with exit code ${code}`));
       }
