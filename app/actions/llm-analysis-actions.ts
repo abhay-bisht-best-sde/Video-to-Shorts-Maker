@@ -42,25 +42,25 @@ export async function processLLMAnalysis(
 
     log.debug("Downloading transcript from Supabase", { transcriptPath: videoInfo.transcriptPath });
 
-    const { data: transcriptData, error: downloadError } = await supabaseStorageClient.storage
+    const { data: vttContent, error: downloadError } = await supabaseStorageClient.storage
       .from(env.SB_TRANSCRIPT_BUCKET_NAME!)
-      .download(videoInfo.transcriptPath);
+      .download(videoInfo.vttPath!);
 
-    if (downloadError || !transcriptData) {
-      log.error("Error downloading transcript from Supabase", downloadError as Error, {
+    if (downloadError || !vttContent) {
+      log.error("Error downloading vttData from Supabase", downloadError as Error, {
         transcriptPath: videoInfo.transcriptPath,
       });
       throw new Error(`Failed to download transcript: ${downloadError?.message || "Unknown error"}`);
     }
 
-    const transcriptContent = await transcriptData.text();
+    const vttTextContent = await vttContent.text();
 
     log.debug("Transcript downloaded successfully", {
       transcriptPath: videoInfo.transcriptPath,
-      contentLength: transcriptContent.length,
+      contentLength: vttTextContent.length,
     });
 
-    await detectMomementsAndUpdateStatus({ transcriptContent, videoId, videoUuid, traceId });
+    await detectMomementsAndUpdateStatus({ vttContent: vttTextContent, videoId, videoUuid, traceId });
     log.info("LLM analysis processing completed successfully", { videoId, videoUuid });
 
     await publishToVideoTrimmingQueue(videoId, videoUuid, traceId);

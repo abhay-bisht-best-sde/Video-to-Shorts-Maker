@@ -12,7 +12,7 @@ export interface VideoMoment {
 }
 
 interface IDetectMomentsAndUpdateStatusProps {
-  transcriptContent: string;
+  vttContent: string;
   videoId: string;
   videoUuid: string;
   traceId: string;
@@ -57,7 +57,8 @@ Prioritize moments that:
 
 You must:
 - Return exactly 3 to 5 key moments optimized for reel creation
-- Use only timestamps that exist in the transcript
+- Parse the VTT format to extract timestamps and convert them to seconds (e.g., 00:01:30.500 = 90.5 seconds)
+- Use only timestamps that exist in the VTT transcript
 - Ensure no moments overlap in time
 - Ensure start_time < end_time
 - Ensure each moment is at least 10 seconds long
@@ -70,33 +71,47 @@ If no valid moments exist, return an empty array.`,
     [
       "human",
       `### CONTEXT
-You will be given a video transcript with timestamps.
-Each transcript entry follows this format:
+You will be given a video transcript in VTT (WebVTT) format with timestamps.
 
-[timestamp_in_seconds] text spoken at that time
+VTT format structure:
+- Each subtitle entry has a timestamp range in the format: HH:MM:SS.mmm --> HH:MM:SS.mmm
+- Timestamps are in hours:minutes:seconds.milliseconds format
+- The text content appears below the timestamp line
+- Multiple lines of text can appear for each timestamp range
 
-Example:
-[12.5] Today we're going to talk about how startups fail
-[45.2] The first mistake founders make is hiring too early
+Example VTT format:
+WEBVTT
 
-Here is the transcript:
+00:00:12.500 --> 00:00:15.200
+Today we're going to talk about how startups fail
+
+00:00:45.200 --> 00:00:48.500
+The first mistake founders make is hiring too early
+
+IMPORTANT: When extracting timestamps for moments, convert the VTT timestamp format (HH:MM:SS.mmm) to seconds.
+For example:
+- 00:00:12.500 becomes 12.5 seconds
+- 00:01:30.750 becomes 90.75 seconds
+- 00:02:45.000 becomes 165.0 seconds
+
+Here is the VTT content:
 """
-{transcriptContent}
+{vttContent}
 """
 
-Extract the key moments from this transcript.`,
+Extract the key moments from this VTT transcript. Use the timestamps from the VTT format and convert them to seconds for the start_time and end_time values.`,
     ],
   ]);
 };
 
 export async function detectMomementsAndUpdateStatus(props: IDetectMomentsAndUpdateStatusProps): Promise<void> {
-  const { transcriptContent, videoId, videoUuid, traceId } = props;
+  const { vttContent, videoId, videoUuid, traceId } = props;
 
   const log = logger.withTraceId(traceId);
 
   try {
     log.debug("Starting moment detection", {
-      transcriptLength: transcriptContent.length,
+      vttContent: vttContent.length,
       videoId,
       videoUuid,
     });
@@ -111,7 +126,7 @@ export async function detectMomementsAndUpdateStatus(props: IDetectMomentsAndUpd
     const chain = prompt.pipe(structuredLLM);
 
     const result = await chain.invoke({
-      transcriptContent,
+      vttContent,
     });
 
     const moments: VideoMoment[] = result?.moments || [];
