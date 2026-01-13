@@ -6,10 +6,10 @@ import {
 import { sqsClient } from "../sqs-client";
 import { env } from "@/app/(core)/config/env";
 import { getPollingConfig } from "../polling-config";
-import { processTranscript } from "@/app/(core)/actions/transcript-actions";
-import { logger } from "@/app/(core)/lib/logger";
+import { processVideoTrimming } from "@/app/(core)/actions/video-trimming-actions";
+import { logger } from "@/app/(core)/helpers/logger";
 
-export interface TranscriptQueueMessage {
+export interface VideoTrimmingQueueMessage {
   videoId: string;
   videoUuid: string;
 }
@@ -33,7 +33,7 @@ async function processMessage(message: Message): Promise<void> {
   const messageLog = logger.withTraceId(messageTraceId);
 
   try {
-    const data: TranscriptQueueMessage = JSON.parse(message.Body);
+    const data: VideoTrimmingQueueMessage = JSON.parse(message.Body);
 
     if (!data.videoId || !data.videoUuid) {
       messageLog.error("Invalid message format", new Error("Missing videoId or videoUuid"), {
@@ -42,55 +42,58 @@ async function processMessage(message: Message): Promise<void> {
       return;
     }
 
-    messageLog.info("Processing transcript queue message", {
+    messageLog.info("Processing video trimming queue message", {
       videoId: data.videoId,
       videoUuid: data.videoUuid,
     });
 
-    await processTranscript(data.videoId, data.videoUuid, messageTraceId);
+    // Process video trimming/clips generation using server action
+    // Status updates are handled within the server action
+    await processVideoTrimming(data.videoId, data.videoUuid, messageTraceId);
 
+    // Delete message from queue after successful processing
     const deleteCommand = new DeleteMessageCommand({
-      QueueUrl: env.TRANSCRIPT_QUEUE!,
+      QueueUrl: env.VIDEO_TRIMMING!,
       ReceiptHandle: message.ReceiptHandle,
     });
     await sqsClient.send(deleteCommand);
 
-    messageLog.info("Successfully processed and deleted transcript queue message", {
+    messageLog.info("Successfully processed and deleted video trimming queue message", {
       videoId: data.videoId,
     });
   } catch (error) {
     let videoId = "unknown";
     try {
       if (message.Body) {
-        const parsed = JSON.parse(message.Body) as TranscriptQueueMessage;
+        const parsed = JSON.parse(message.Body) as VideoTrimmingQueueMessage;
         videoId = parsed.videoId || "unknown";
       }
     } catch {
       // Ignore parse errors in error handler
     }
 
-    messageLog.error("Error processing transcript message", error as Error, {
+    messageLog.error("Error processing video trimming message", error as Error, {
       videoId,
     });
+    // Status is already set to Error by the server action
   }
 }
 
-export async function pollTranscriptQueue(): Promise<void> {
+export async function pollVideoTrimmingQueue(): Promise<void> {
   const traceId = logger.generateTraceId();
   const log = logger.withTraceId(traceId);
-
-  log.debug("Polling transcript queue", { queueUrl: env.TRANSCRIPT_QUEUE });
-
+  
+  log.debug("Polling video trimming queue", { queueUrl: env.VIDEO_TRIMMING });
+  
   const command = new ReceiveMessageCommand(
-    getPollingConfig(env.TRANSCRIPT_QUEUE!)
+    getPollingConfig(env.VIDEO_TRIMMING!)
   );
 
   try {
     const response = await sqsClient.send(command);
 
-    console.log("MESSAGES", response.Messages);
     if (response.Messages && response.Messages.length > 0) {
-      log.info("Received messages from transcript queue", {
+      log.info("Received messages from video trimming queue", {
         messageCount: response.Messages.length,
       });
 
@@ -109,9 +112,10 @@ export async function pollTranscriptQueue(): Promise<void> {
         await Promise.all(batch.map((message) => processMessage(message)));
       }
     } else {
-      log.debug("No messages received from transcript queue");
+      log.debug("No messages received from video trimming queue");
     }
   } catch (error) {
-    log.error("Error polling transcript queue", error as Error);
+    log.error("Error polling video trimming queue", error as Error);
   }
 }
+

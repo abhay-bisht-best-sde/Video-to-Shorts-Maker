@@ -14,21 +14,37 @@ enum ProcessingStatus {
 }
 
 model Video {
-  id                    String           @id @default(uuid())
-  videoUuid             String           @unique
+  id                    String           @id @default(uuid()) @db.Uuid
+  videoUuid             String      @db.Uuid @unique
   originalName          String
   mimeType              String
   size                  Int
   duration              Float?
   videoKey              String
-  transcriptUuid        String?
+  transcriptUuid        String? @db.Uuid
   transcriptPath        String?
-  vttUuid               String?
+  vttUuid               String? @db.Uuid
   vttPath               String?
+  moments VideoMoment[]
   transcriptStatus      ProcessingStatus @default(NotStarted)
   videoAnalysisStatus   ProcessingStatus @default(NotStarted)
   clipsGenerationStatus ProcessingStatus @default(NotStarted)
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   @@map("videos")
+  @@index([id, videoUuid])
+}
+
+model VideoMoment {
+  id String @id @default(uuid()) @db.Uuid
+  videoId String @db.Uuid
+  video Video @relation(fields: [videoId], references: [id])
+  videoUuid String @db.Uuid
+  start_time Float
+  end_time Float
+  title String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("video_moments")
+  @@index([videoId, videoUuid])
 }

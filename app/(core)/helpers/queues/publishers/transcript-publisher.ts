@@ -1,7 +1,7 @@
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { sqsClient } from "../sqs-client";
 import { env } from "@/app/(core)/config/env";
-import { logger } from "@/app/(core)/lib/logger";
+import { logger } from "@/app/(core)/helpers/logger";
 
 export interface TranscriptQueueMessage {
   videoId: string;

@@ -1,11 +1,11 @@
 "use server";
 
-import { prisma } from "@/app/(core)/lib/prisma";
+import { prisma } from "@/app/(core)/helpers/prisma";
 import { ProcessingStatus } from "@prisma/client";
-import { logger } from "@/app/(core)/lib/logger";
-import { extractAudioFromVideo } from "@/app/(core)/lib/utils/audio-extraction";
-import { generateTranscript } from "@/app/(core)/lib/elevenlabs/client";
-import { uploadTranscriptToSupabase } from "@/app/(core)/lib/utils/supabase-storage";
+import { logger } from "@/app/(core)/helpers/logger";
+import { extractAudioFromVideo } from "@/app/(core)/helpers/utils/audio-extraction";
+import { generateTranscript } from "@/app/(core)/helpers/elevenlabs/client";
+import { uploadTranscriptToSupabase } from "@/app/(core)/helpers/utils/supabase-storage";
 import { env } from "@/app/(core)/config/env";
 import { randomUUID } from "crypto";
 

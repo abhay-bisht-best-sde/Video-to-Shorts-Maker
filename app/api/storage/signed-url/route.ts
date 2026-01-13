@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { env } from "@/app/(core)/config/env";
-import { logger } from "@/app/(core)/lib/logger";
-import { r2Client } from "@/app/(core)/lib/r2/client";
+import { logger } from "@/app/(core)/helpers/logger";
+import { r2Client } from "@/app/(core)/helpers/r2/client";
 
 const EXPIRY_HOURS = 2;
 

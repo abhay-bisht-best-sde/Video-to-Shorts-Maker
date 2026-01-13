@@ -1,8 +1,8 @@
 import { randomUUID } from "crypto";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { logger } from "@/app/(core)/lib/logger";
+import { logger } from "@/app/(core)/helpers/logger";
 import { env } from "@/app/(core)/config/env";
-import { r2Client } from "@/app/(core)/lib/r2/client";
+import { r2Client } from "@/app/(core)/helpers/r2/client";
 
 interface IUploadFileParams {
   file: File | Buffer;

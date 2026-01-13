@@ -1,30 +1,30 @@
 import { SendMessageCommand } from "@aws-sdk/client-sqs";
 import { sqsClient } from "../sqs-client";
 import { env } from "@/app/(core)/config/env";
-import { logger } from "@/app/(core)/lib/logger";
+import { logger } from "@/app/(core)/helpers/logger";
 
-export interface VideoTrimmingQueueMessage {
+export interface LLMAnalysisQueueMessage {
   videoId: string;
   videoUuid: string;
 }
 
-export async function publishToVideoTrimmingQueue(
+export async function publishToLLMAnalysisQueue(
   videoId: string,
   videoUuid: string,
   traceId?: string
 ): Promise<void> {
   const log = traceId ? logger.withTraceId(traceId) : logger;
   
-  log.info("Publishing message to video trimming queue", { videoId, videoUuid });
+  log.info("Publishing message to LLM analysis queue", { videoId, videoUuid });
 
-  const message: VideoTrimmingQueueMessage = {
+  const message: LLMAnalysisQueueMessage = {
     videoId,
     videoUuid,
   };
 
   try {
     const command = new SendMessageCommand({
-      QueueUrl: env.VIDEO_TRIMMING!,
+      QueueUrl: env.LLM_ANALYSIS!,
       MessageBody: JSON.stringify(message),
       MessageGroupId: videoUuid,
       MessageDeduplicationId: videoUuid,
@@ -32,9 +32,9 @@ export async function publishToVideoTrimmingQueue(
 
     await sqsClient.send(command);
     
-    log.info("Successfully published message to video trimming queue", { videoId, videoUuid });
+    log.info("Successfully published message to LLM analysis queue", { videoId, videoUuid });
   } catch (error) {
-    log.error("Failed to publish message to video trimming queue", error as Error, {
+    log.error("Failed to publish message to LLM analysis queue", error as Error, {
       videoId,
       videoUuid,
     });

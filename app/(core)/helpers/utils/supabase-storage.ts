@@ -1,5 +1,5 @@
-import { supabaseStorageClient } from "@/app/(core)/lib/supabase/storage-client";
-import { logger } from "@/app/(core)/lib/logger";
+import { supabaseStorageClient } from "@/app/(core)/helpers/supabase/storage-client";
+import { logger } from "@/app/(core)/helpers/logger";
 
 interface IUploadTranscriptParams {
   content: string;

@@ -1,5 +1,5 @@
-import { pollTranscriptQueue } from "./consumers/transcript-consumer";
-import { logger } from "@/app/(core)/lib/logger";
+import { pollLLMAnalysisQueue, pollTranscriptQueue, pollVideoTrimmingQueue } from "./consumers";
+import { logger } from "@/app/(core)/helpers/logger";
 
 export async function pollAllQueues(): Promise<void> {
   const traceId = logger.generateTraceId();
@@ -7,6 +7,8 @@ export async function pollAllQueues(): Promise<void> {
   log.debug("Starting to poll all queues");
   await Promise.all([
     pollTranscriptQueue(),
+    pollLLMAnalysisQueue(),
+    pollVideoTrimmingQueue(),
   ]);
   log.debug("Completed polling all queues");
 }

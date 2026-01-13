@@ -1,6 +1,6 @@
 import { useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { getVideoDuration } from "@/app/(core)/lib/get-video-duration";
+import { getVideoDuration } from "@/app/(core)/helpers/get-video-duration";
 import { useUploadVideo } from "./use-videos";
 
 const MAX_DURATION_SECONDS = 35 * 60;
@@ -21,8 +21,6 @@ export function useVideoUpload() {
       let duration: number | null = null;
       try {
         duration = await getVideoDuration(file);
-        console.log("duration" , duration)
-        console.log("MAX_DURATION_SECONDS" , MAX_DURATION_SECONDS)
         if (duration > MAX_DURATION_SECONDS) {
           toast.error(
             `Video duration exceeds maximum allowed duration of 35 minutes. Your video is ${Math.round(duration / 60)} minutes.`

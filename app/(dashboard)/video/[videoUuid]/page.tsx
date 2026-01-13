@@ -9,7 +9,7 @@ import { ArrowLeft, Video} from "lucide-react";
 import Link from "next/link";
 import { useVideo } from "@/app/(core)/hooks/use-video";
 import { QueryBoundary } from "@/app/(core)/components/query-boundary";
-import { formatFileSize, formatDuration, formatDate } from "@/app/(core)/lib/utils/format";
+import { formatFileSize, formatDuration, formatDate } from "@/app/(core)/helpers/utils/format";
 
 
 export default function VideoDetailPage() {

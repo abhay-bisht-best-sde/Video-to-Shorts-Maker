@@ -1,7 +1,7 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { r2Client } from "@/app/(core)/lib/r2/client";
+import { r2Client } from "@/app/(core)/helpers/r2/client";
 import { env } from "@/app/(core)/config/env";
-import { logger } from "@/app/(core)/lib/logger";
+import { logger } from "@/app/(core)/helpers/logger";
 import { mkdir, unlink } from "fs/promises";
 import { join, resolve } from "path";
 import { Worker } from "worker_threads";

@@ -1,8 +1,8 @@
 "use server";
 
-import { prisma } from "@/app/(core)/lib/prisma";
+import { prisma } from "@/app/(core)/helpers/prisma";
 import { ProcessingStatus } from "@prisma/client";
-import { logger } from "@/app/(core)/lib/logger";
+import { logger } from "@/app/(core)/helpers/logger";
 
 export async function processVideoTrimming(
   videoId: string,

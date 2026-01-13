@@ -9,8 +9,8 @@ import Link from "next/link";
 import { useVideos } from "@/app/(core)/hooks/use-videos";
 import { useVideoUpload } from "@/app/(core)/hooks/use-video-upload";
 import { QueryBoundary } from "@/app/(core)/components/query-boundary";
-import { formatFileSize, formatDuration, formatDate } from "@/app/(core)/lib/utils/format";
-import { getStatusBadge } from "@/app/(core)/lib/utils/status";
+import { formatFileSize, formatDuration, formatDate } from "@/app/(core)/helpers/utils/format";
+import { getStatusBadge } from "@/app/(core)/helpers/utils/status";
 
 export default function VideosPage() {
   const videosQuery = useVideos();

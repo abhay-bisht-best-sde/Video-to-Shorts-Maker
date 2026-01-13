@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { prisma } from "@/app/(core)/lib/prisma";
-import { publishToTranscriptQueue } from "@/app/(core)/lib/queues/publishers/transcript-publisher";
-import { logger } from "@/app/(core)/lib/logger";
-import { uploadFileToBucket } from "@/app/(core)/lib/utils/storage";
+import { prisma } from "@/app/(core)/helpers/prisma";
+import { publishToTranscriptQueue } from "@/app/(core)/helpers/queues/publishers/transcript-publisher";
+import { logger } from "@/app/(core)/helpers/logger";
+import { uploadFileToBucket } from "@/app/(core)/helpers/utils/storage";
 
 const MAX_DURATION_SECONDS = 35 * 60;
 export const runtime = "nodejs";
